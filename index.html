@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字转语音</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea, select {
+            width: 100%;
+            padding: 0.8rem;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+
+        textarea:focus, select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            background: #4ecdc4;
+            color: white;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #45b7af;
+            transform: translateY(-2px);
+        }
+
+        #audioPlayer {
+            width: 100%;
+            margin-top: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: white;
+            margin: 1rem 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid white;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>文字转语音</h1>
+        <div class="input-group">
+            <label for="text">输入文字</label>
+            <textarea id="text" rows="4" placeholder="请输入要转换的文字..."></textarea>
+        </div>
+        <div class="input-group">
+            <label for="voice">选择声音</label>
+            <select id="voice">
+                <option value="0">女声1</option>
+                <option value="5">女声2</option>
+                <option value="1">男声1</option>
+                <option value="2">男声2</option>
+                <option value="3">男声3</option>
+            </select>
+        </div>
+        <button onclick="convertToSpeech()">转换为语音</button>
+        <div id="loading" class="loading">正在转换中...</div>
+        <audio id="audioPlayer" controls style="display: none;"></audio>
+        <p style="color: white; font-size: 0.9rem; margin-top: 1rem; text-align: center;">
+            提示：如果播放失败，请点击下方下载链接
+        </p>
+    </div>
+
+    <script>
+        async function convertToSpeech() {
+            const text = document.getElementById('text').value;
+            const voice = document.getElementById('voice').value;
+            const loading = document.getElementById('loading');
+            const audioPlayer = document.getElementById('audioPlayer');
+
+            if (!text) {
+                alert('请输入要转换的文字！');
+                return;
+            }
+
+            loading.style.display = 'block';
+            audioPlayer.style.display = 'none';
+            // 移除之前的下载链接
+            const existingLink = document.querySelector('.download-link');
+            if (existingLink) {
+                existingLink.remove();
+            }
+
+            try {
+                const response = await fetch(`https://zj.v.api.aa1.cn/api/baidu-01/?msg=${encodeURIComponent(text)}&choose=${voice}&su=100&yd=5`);
+                const data = await response.json();
+
+                if (data.code === 200 && data.msg && data.download) {
+                    // 显示音频播放器
+                    audioPlayer.src = data.download;
+                    audioPlayer.style.display = 'block';
+                    
+                    // 创建下载链接
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = data.download;
+                    downloadLink.className = 'download-link';
+                    downloadLink.textContent = `下载语音文件：${data.msg}`;
+                    downloadLink.target = '_blank';
+                    downloadLink.style.cssText = `
+                        display: block;
+                        color: white;
+                        margin-top: 1rem;
+                        text-align: center;
+                        padding: 10px;
+                        background: rgba(255, 255, 255, 0.2);
+                        border-radius: 10px;
+                        text-decoration: none;
+                        transition: background 0.3s ease;
+                    `;
+                    
+                    downloadLink.onmouseover = () => {
+                        downloadLink.style.background = 'rgba(255, 255, 255, 0.3)';
+                    };
+                    
+                    downloadLink.onmouseout = () => {
+                        downloadLink.style.background = 'rgba(255, 255, 255, 0.2)';
+                    };
+
+                    audioPlayer.parentNode.insertBefore(downloadLink, audioPlayer.nextSibling);
+
+                    // 尝试播放
+                    try {
+                        await audioPlayer.play();
+                    } catch (playError) {
+                        console.warn('自动播放失败，需要用户手动点击播放');
+                    }
+                } else {
+                    throw new Error(data.msg || 'API返回数据格式错误');
+                }
+            } catch (error) {
+                console.error('转换失败:', error);
+                alert('转换失败，请稍后重试！');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
